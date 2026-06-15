@@ -1,6 +1,6 @@
 # Market-Pulse
 
-Ein elegantes, performantes Echtzeit-Dashboard für die weltweit größten Aktien im modernen Dark-Design. Das Projekt fokussiert sich auf eine saubere, strukturierte Darstellung von Marktdaten der globalen Tech-Giganten im gläsernen Look (Glassmorphism).
+Ein elegantes, performantes Echtzeit-Dashboard für die weltweit größten Aktien im modernen Dark-Design. Das Projekt fokussiert sich auf eine saubere, strukturierte Darstellung von Marktdaten der globalen Tech-Giganten im gläsernen Look.
 
 ## Features
 * **Modernes UI:** Tiefdunkler Hintergrund mit dynamischen Neon-Trendfarben.
@@ -8,8 +8,8 @@ Ein elegantes, performantes Echtzeit-Dashboard für die weltweit größten Aktie
 * **Saubere Struktur:** Leicht erweiterbares HTML- und CSS-Gerüst ohne unnötigen Ballast.
 
 ## Technologien
-* HTML5 (Semantische und sauber eingerückte Struktur)
-* CSS3 (Flexbox, CSS-Grid und Farbverläufe)
+* HTML (Semantische und sauber eingerückte Struktur)
+* CSS (Flexbox, CSS-Grid und Farbverläufe)
 
 ## Hintergrund zum Projekt
-Dieses Repository ist als reines Lernprojekt entstanden. Das Hauptziel liegt darin, die Grundlagen von modernem Webdesign Schritt für Schritt von Grund auf zu erlernen. Dabei wird besonders viel Wert auf saubere Code-Einrückung (Indentation), die logische Trennung von Struktur (HTML) und Design (CSS) sowie das Verständnis von responsiven Layout-Systemen gelegt.
+Dieses Repository ist als reines Lernprojekt entstanden.
