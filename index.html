@@ -13,25 +13,27 @@
         
         <header>
             <h1>Market-Pulse</h1>
-            <p id="live-indicator">● Live-Marktdaten der globalen Tech-Giganten im Überblick.</p>
+            <p id="live-indicator">● Live-Marktdaten im Überblick.</p>
         </header>
 
         <div class="market-grid">
-            
-            <div class="asset-card green-trend">
+
+            <div class="asset-card" id="card-AAPL">
                 
                 <div class="card-header">
                     <span class="asset-name">Apple Inc.</span>
                     <span class="asset-ticker">AAPL</span>
                 </div>
 
-                <div class="asset-price">$180.25</div>
+                <div class="asset-price" id="price-AAPL">Lade...</div>
                 
-                <div class="asset-change">+1.45%</div>
+                <div class="asset-change" id="change-AAPL">--%</div>
 
             </div> 
+
         </div> 
     </div> 
-</body>
 
+    <script src="script.js"></script>
+</body>
 </html>
