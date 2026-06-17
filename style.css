@@ -112,3 +112,17 @@ header h1 {
     color: #22c55e;
     background: rgba(34, 197, 94, 0.1);
 }
+
+.red-trend {
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+}
+
+.red-trend:hover {
+    border-color: rgba(239, 68, 68, 0.4);
+    box-shadow: 0 10px 30px rgba(239, 68, 68, 0.15);
+}
+
+.red-trend .asset-change {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
