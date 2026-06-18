@@ -13,24 +13,23 @@
         
         <header>
             <h1>Market-Pulse</h1>
-            <p id="live-indicator">● Live-Marktdaten im Überblick.</p>
+            <p id="live-indicator">● Live-Marktdaten der globalen Tech-Giganten im Überblick.</p>
+            
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Aktienkürzel eingeben (z.B. AAPL, MSFT)...">
+                <button id="search-button">Suchen</button>
+            </div>
         </header>
 
-        <div class="market-grid">
-
+        <div class="market-grid" id="market-grid">
             <div class="asset-card" id="card-AAPL">
-                
                 <div class="card-header">
-                    <span class="asset-name">Apple Inc.</span>
+                    <span class="asset-name" id="name-AAPL">Apple Inc.</span>
                     <span class="asset-ticker">AAPL</span>
                 </div>
-
                 <div class="asset-price" id="price-AAPL">Lade...</div>
-                
                 <div class="asset-change" id="change-AAPL">--%</div>
-
-            </div> 
-
+            </div>
         </div> 
     </div> 
 
