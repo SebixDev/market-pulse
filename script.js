@@ -1,5 +1,3 @@
-const apiKey = "sandbox_c8m90iaad3i9blo6b680";
-
 function createCardHTML(ticker) {
     const grid = document.getElementById("market-grid");
     if (document.getElementById(`card-${ticker}`)) return;
@@ -20,13 +18,16 @@ function createCardHTML(ticker) {
 
 async function fetchStockData(ticker) {
     try {
-        const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=${apiKey}`);
+        const response = await fetch(`https://api.mboum.com/v1/markets/stock/quotes?tickers=${ticker.toUpperCase()}`);
         const data = await response.json();
+        
+        if (data && data.data && data.data[0]) {
+            const stock = data.data[0];
+            const price = stock.regularMarketPrice;
+            const changePercent = stock.regularMarketChangePercent;
+            const companyName = stock.longName || stock.shortName || ticker;
 
-        if (data && data.c !== 0) {
-            const price = data.c;
-            const changePercent = data.dp;
-
+            document.getElementById(`name-${ticker}`).innerText = companyName;
             document.getElementById(`price-${ticker}`).innerText = `$${price.toFixed(2)}`;
             
             const changeElement = document.getElementById(`change-${ticker}`);
@@ -41,7 +42,7 @@ async function fetchStockData(ticker) {
             }
         } else {
             const priceElement = document.getElementById(`price-${ticker}`);
-            if (priceElement) priceElement.innerText = "Kürzel unbekannt";
+            if (priceElement) priceElement.innerText = "Nicht gefunden";
         }
     } catch (error) {
         console.error("Fehler:", error);
