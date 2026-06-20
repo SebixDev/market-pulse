@@ -43,43 +43,57 @@ header h1 {
 }
 
 .search-container {
-    margin-top: 24px;
+    margin-top: 32px;
     display: flex;
     justify-content: center;
-    gap: 10px;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 8px;
+    border-radius: 14px;
+    max-width: 450px;
+    margin-left: auto;
+    margin-right: auto;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
 #search-input {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 10px 16px;
+    background: transparent;
+    border: none;
+    padding: 10px 14px;
     color: #ffffff;
-    font-size: 0.95rem;
+    font-size: 1rem;
     width: 100%;
-    max-width: 300px;
     outline: none;
-    transition: border-color 0.3s;
 }
 
-#search-input:focus {
-    border-color: rgba(163, 174, 208, 0.6);
+#search-input::placeholder {
+    color: #5c6784;
 }
 
 #search-button {
-    background: linear-gradient(45deg, #ffffff, #a3aed0);
+    background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
     color: #0b0e14;
     border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
+    border-radius: 10px;
+    padding: 12px 24px;
     font-weight: 600;
     font-size: 0.95rem;
     cursor: pointer;
-    transition: opacity 0.3s;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
 #search-button:hover {
-    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.15);
+}
+
+#search-button:active {
+    transform: translateY(1px);
 }
 
 .market-grid {
