@@ -1,3 +1,18 @@
+let usdToEurRate = 0.92;
+const trackedTickers = new Set();
+
+async function fetchExchangeRate() {
+    try {
+        const response = await fetch("https://open.er-api.com/v6/latest/USD");
+        const data = await response.json();
+        if (data && data.rates && data.rates.EUR) {
+            usdToEurRate = data.rates.EUR;
+        }
+    } catch (error) {
+        console.error("Fehler beim Wechselkurs laden:", error);
+    }
+}
+
 function createCardHTML(ticker) {
     const grid = document.getElementById("market-grid");
     if (document.getElementById(`card-${ticker}`)) return;
@@ -16,19 +31,30 @@ function createCardHTML(ticker) {
     grid.appendChild(card);
 }
 
-async function fetchStockData(ticker) {
+async function fetchRealStockData(ticker) {
     try {
-        const response = await fetch(`https://api.mboum.com/v1/markets/stock/quotes?tickers=${ticker.toUpperCase()}`);
+        const proxyUrl = "https://corsproxy.io/?";
+        const targetUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}`;
+        
+        const response = await fetch(proxyUrl + encodeURIComponent(targetUrl));
         const data = await response.json();
         
-        if (data && data.data && data.data[0]) {
-            const stock = data.data[0];
-            const price = stock.regularMarketPrice;
+        if (data && data.quoteResponse && data.quoteResponse.result && data.quoteResponse.result[0]) {
+            const stock = data.quoteResponse.result[0];
+            
+            let rawPrice = stock.regularMarketPrice;
             const changePercent = stock.regularMarketChangePercent;
             const companyName = stock.longName || stock.shortName || ticker;
+            const currency = stock.currency;
+
+            if (currency === "USD") {
+                rawPrice = rawPrice * usdToEurRate;
+            } else if (currency === "GBp") {
+                rawPrice = (rawPrice / 100) * usdToEurRate;
+            }
 
             document.getElementById(`name-${ticker}`).innerText = companyName;
-            document.getElementById(`price-${ticker}`).innerText = `$${price.toFixed(2)}`;
+            document.getElementById(`price-${ticker}`).innerText = `${rawPrice.toFixed(2)} €`;
             
             const changeElement = document.getElementById(`change-${ticker}`);
             const cardElement = document.getElementById(`card-${ticker}`);
@@ -51,11 +77,18 @@ async function fetchStockData(ticker) {
     }
 }
 
+function updateAllTracks() {
+    trackedTickers.forEach(ticker => {
+        fetchRealStockData(ticker);
+    });
+}
+
 document.getElementById("search-button").addEventListener("click", () => {
     const input = document.getElementById("search-input").value.trim().toUpperCase();
     if (input) {
+        trackedTickers.add(input);
         createCardHTML(input);
-        fetchStockData(input);
+        fetchRealStockData(input);
         document.getElementById("search-input").value = "";
     }
 });
@@ -66,4 +99,12 @@ document.getElementById("search-input").addEventListener("keypress", (e) => {
     }
 });
 
-fetchStockData("AAPL");
+async function init() {
+    await fetchExchangeRate();
+    trackedTickers.add("AAPL");
+    fetchRealStockData("AAPL");
+    
+    setInterval(updateAllTracks, 30000);
+}
+
+init();
