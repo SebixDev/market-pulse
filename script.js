@@ -1,6 +1,64 @@
 let usdToEurRate = 0.92;
 const trackedTickers = new Set();
 
+const nameToTickerMap = {
+    "MICROSOFT": "MSFT",
+    "APPLE": "AAPL",
+    "NVIDIA": "NVDA",
+    "AMAZON": "AMZN",
+    "ALPHABET": "GOOGL",
+    "GOOGLE": "GOOGL",
+    "META": "META",
+    "FACEBOOK": "META",
+    "BERKSHIRE HATHAWAY": "BRK-B",
+    "ELI LILLY": "LLY",
+    "TESLA": "TSLA",
+    "BROADCOM": "AVGO",
+    "JPMORGAN CHASE": "JPM",
+    "JPMORGAN": "JPM",
+    "WALMART": "WMT",
+    "VISA": "V",
+    "EXXONMOBIL": "XOM",
+    "EXXON": "XOM",
+    "MASTERCARD": "MA",
+    "ASML": "ASML",
+    "ORACLE": "ORCL",
+    "NOVO NORDISK": "NVO",
+    "HOME DEPOT": "HD",
+    "PROCTER & GAMBLE": "PG",
+    "PROCTER AND GAMBLE": "PG",
+    "NETFLIX": "NFLX",
+    "ADOBE": "ADBE",
+    "COCA-COLA": "KO",
+    "COCA COLA": "KO",
+    "PEPSICO": "PEP",
+    "PEPSI": "PEP",
+    "SAP": "SAP",
+    "SIEMENS": "SIE.DE",
+    "ALLIANZ": "ALV.DE",
+    "DEUTSCHE TELEKOM": "DTE.DE",
+    "MERCEDES-BENZ": "MBG.DE",
+    "MERCEDES BENZ": "MBG.DE",
+    "MERCEDES": "MBG.DE",
+    "BMW": "BMW.DE",
+    "BASF": "BAS.DE",
+    "S&P 500": "SPY",
+    "SP500": "SPY",
+    "CORE S&P 500": "IVV",
+    "NASDAQ 100": "QQQ",
+    "NASDAQ": "QQQ",
+    "MSCI WORLD": "URTH",
+    "VANGUARD FTSE ALL-WORLD": "VWRA.L",
+    "FTSE ALL-WORLD": "VWRA.L",
+    "BITCOIN ETF": "IBIT",
+    "ISHARES BITCOIN": "IBIT",
+    "GOLD ETF": "GLD",
+    "ISHARES CORE DAX": "EXS1.DE",
+    "DAX ETF": "EXS1.DE",
+    "DIVIDENDEN ETF": "VYM",
+    "VANGUARD HIGH DIVIDEND": "VYM"
+};
+
 async function fetchExchangeRate() {
     try {
         const response = await fetch("https://open.er-api.com/v6/latest/USD");
@@ -9,7 +67,7 @@ async function fetchExchangeRate() {
             usdToEurRate = data.rates.EUR;
         }
     } catch (error) {
-        console.error("Fehler beim Wechselkurs laden:", error);
+        console.error("Fehler beim Laden des Wechselkurses:", error);
     }
 }
 
@@ -84,11 +142,19 @@ function updateAllTracks() {
 }
 
 document.getElementById("search-button").addEventListener("click", () => {
-    const input = document.getElementById("search-input").value.trim().toUpperCase();
-    if (input) {
-        trackedTickers.add(input);
-        createCardHTML(input);
-        fetchRealStockData(input);
+    const rawInput = document.getElementById("search-input").value.trim();
+    const cleanInput = rawInput.toUpperCase();
+    
+    if (cleanInput) {
+        let ticker = cleanInput;
+
+        if (nameToTickerMap[cleanInput]) {
+            ticker = nameToTickerMap[cleanInput];
+        }
+
+        trackedTickers.add(ticker);
+        createCardHTML(ticker);
+        fetchRealStockData(ticker);
         document.getElementById("search-input").value = "";
     }
 });
@@ -102,6 +168,7 @@ document.getElementById("search-input").addEventListener("keypress", (e) => {
 async function init() {
     await fetchExchangeRate();
     trackedTickers.add("AAPL");
+    createCardHTML("AAPL");
     fetchRealStockData("AAPL");
     
     setInterval(updateAllTracks, 30000);
