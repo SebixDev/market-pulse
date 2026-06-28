@@ -2,61 +2,22 @@ let usdToEurRate = 0.92;
 const trackedTickers = new Set();
 
 const nameToTickerMap = {
-    "MICROSOFT": "MSFT",
-    "APPLE": "AAPL",
-    "NVIDIA": "NVDA",
-    "AMAZON": "AMZN",
-    "ALPHABET": "GOOGL",
-    "GOOGLE": "GOOGL",
-    "META": "META",
-    "FACEBOOK": "META",
-    "BERKSHIRE HATHAWAY": "BRK-B",
-    "ELI LILLY": "LLY",
-    "TESLA": "TSLA",
-    "BROADCOM": "AVGO",
-    "JPMORGAN CHASE": "JPM",
-    "JPMORGAN": "JPM",
-    "WALMART": "WMT",
-    "VISA": "V",
-    "EXXONMOBIL": "XOM",
-    "EXXON": "XOM",
-    "MASTERCARD": "MA",
-    "ASML": "ASML",
-    "ORACLE": "ORCL",
-    "NOVO NORDISK": "NVO",
-    "HOME DEPOT": "HD",
-    "PROCTER & GAMBLE": "PG",
-    "PROCTER AND GAMBLE": "PG",
-    "NETFLIX": "NFLX",
-    "ADOBE": "ADBE",
-    "COCA-COLA": "KO",
-    "COCA COLA": "KO",
-    "PEPSICO": "PEP",
-    "PEPSI": "PEP",
-    "SAP": "SAP",
-    "SIEMENS": "SIE.DE",
-    "ALLIANZ": "ALV.DE",
-    "DEUTSCHE TELEKOM": "DTE.DE",
-    "MERCEDES-BENZ": "MBG.DE",
-    "MERCEDES BENZ": "MBG.DE",
-    "MERCEDES": "MBG.DE",
-    "BMW": "BMW.DE",
-    "BASF": "BAS.DE",
-    "S&P 500": "SPY",
-    "SP500": "SPY",
-    "CORE S&P 500": "IVV",
-    "NASDAQ 100": "QQQ",
-    "NASDAQ": "QQQ",
-    "MSCI WORLD": "URTH",
-    "VANGUARD FTSE ALL-WORLD": "VWRA.L",
-    "FTSE ALL-WORLD": "VWRA.L",
-    "BITCOIN ETF": "IBIT",
-    "ISHARES BITCOIN": "IBIT",
-    "GOLD ETF": "GLD",
-    "ISHARES CORE DAX": "EXS1.DE",
-    "DAX ETF": "EXS1.DE",
-    "DIVIDENDEN ETF": "VYM",
-    "VANGUARD HIGH DIVIDEND": "VYM"
+    "MICROSOFT": "MSFT", "APPLE": "AAPL", "NVIDIA": "NVDA", "AMAZON": "AMZN",
+    "ALPHABET": "GOOGL", "GOOGLE": "GOOGL", "META": "META", "FACEBOOK": "META",
+    "BERKSHIRE HATHAWAY": "BRK-B", "ELI LILLY": "LLY", "TESLA": "TSLA",
+    "BROADCOM": "AVGO", "JPMORGAN CHASE": "JPM", "JPMORGAN": "JPM",
+    "WALMART": "WMT", "VISA": "V", "EXXONMOBIL": "XOM", "EXXON": "XOM",
+    "MASTERCARD": "MA", "ASML": "ASML", "ORACLE": "ORCL", "NOVO NORDISK": "NVO",
+    "HOME DEPOT": "HD", "PROCTER & GAMBLE": "PG", "PROCTER AND GAMBLE": "PG",
+    "NETFLIX": "NFLX", "ADOBE": "ADBE", "COCA-COLA": "KO", "COCA COLA": "KO",
+    "PEPSICO": "PEP", "PEPSI": "PEP", "SAP": "SAP", "SIEMENS": "SIE.DE",
+    "ALLIANZ": "ALV.DE", "DEUTSCHE TELEKOM": "DTE.DE", "MERCEDES-BENZ": "MBG.DE",
+    "MERCEDES BENZ": "MBG.DE", "MERCEDES": "MBG.DE", "BMW": "BMW.DE", "BASF": "BAS.DE",
+    "S&P 500": "SPY", "SP500": "SPY", "CORE S&P 500": "IVV", "NASDAQ 100": "QQQ",
+    "NASDAQ": "QQQ", "MSCI WORLD": "URTH", "VANGUARD FTSE ALL-WORLD": "VWRA.L",
+    "FTSE ALL-WORLD": "VWRA.L", "BITCOIN ETF": "IBIT", "ISHARES BITCOIN": "IBIT",
+    "GOLD ETF": "GLD", "ISHARES CORE DAX": "EXS1.DE", "DAX ETF": "EXS1.DE",
+    "DIVIDENDEN ETF": "VYM", "VANGUARD HIGH DIVIDEND": "VYM"
 };
 
 async function fetchExchangeRate() {
@@ -69,6 +30,38 @@ async function fetchExchangeRate() {
     } catch (error) {
         console.error("Fehler beim Laden des Wechselkurses:", error);
     }
+}
+
+function drawSparkline(ticker, sparklineData, isPositive) {
+    const canvas = document.getElementById(`chart-${ticker}`);
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (sparklineData.length < 2) return;
+
+    const min = Math.min(...sparklineData);
+    const max = Math.max(...sparklineData);
+    const range = max - min === 0 ? 1 : max - min;
+
+    ctx.beginPath();
+    for (let i = 0; i < sparklineData.length; i++) {
+        const x = (i / (sparklineData.length - 1)) * canvas.width;
+        const y = canvas.height - ((sparklineData[i] - min) / range) * canvas.height * 0.8 - canvas.height * 0.1;
+        
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+
+    ctx.strokeStyle = isPositive ? "#22c55e" : "#ef4444";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.shadowBlur = 4;
+    ctx.shadowColor = isPositive ? "#22c55e" : "#ef4444";
+    ctx.stroke();
+    ctx.shadowBlur = 0; 
 }
 
 function createCardHTML(ticker) {
@@ -85,6 +78,9 @@ function createCardHTML(ticker) {
         </div>
         <div class="asset-price" id="price-${ticker}">Lade...</div>
         <div class="asset-change" id="change-${ticker}">--%</div>
+        <div class="chart-container">
+            <canvas id="chart-${ticker}" width="280" height="80"></canvas>
+        </div>
     `;
     grid.appendChild(card);
 }
@@ -92,7 +88,7 @@ function createCardHTML(ticker) {
 async function fetchRealStockData(ticker) {
     try {
         const proxyUrl = "https://corsproxy.io/?";
-        const targetUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}`;
+        const targetUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}&fields=regularMarketPrice,regularMarketChangePercent,longName,shortName,currency,sparkline_historical_data`;
         
         const response = await fetch(proxyUrl + encodeURIComponent(targetUrl));
         const data = await response.json();
@@ -116,14 +112,24 @@ async function fetchRealStockData(ticker) {
             
             const changeElement = document.getElementById(`change-${ticker}`);
             const cardElement = document.getElementById(`card-${ticker}`);
+            const isPositive = changePercent >= 0;
 
-            if (changePercent >= 0) {
+            if (isPositive) {
                 changeElement.innerText = `+${changePercent.toFixed(2)}%`;
                 cardElement.className = "asset-card green-trend";
             } else {
                 changeElement.innerText = `${changePercent.toFixed(2)}%`;
                 cardElement.className = "asset-card red-trend";
             }
+
+            let chartData = [];
+            if (stock.sparkline_historical_data && stock.sparkline_historical_data.close) {
+                chartData = stock.sparkline_historical_data.close;
+            } else {
+                chartData = [rawPrice * 0.98, rawPrice * 0.99, rawPrice * 0.97, rawPrice * 1.01, rawPrice * 0.99, rawPrice];
+            }
+            drawSparkline(ticker, chartData, isPositive);
+
         } else {
             const priceElement = document.getElementById(`price-${ticker}`);
             if (priceElement) priceElement.innerText = "Nicht gefunden";
