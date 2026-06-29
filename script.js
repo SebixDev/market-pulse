@@ -1,5 +1,6 @@
 let usdToEurRate = 0.92;
 const trackedTickers = new Set();
+const activeTimeframes = {};
 
 const nameToTickerMap = {
     "MICROSOFT": "MSFT", "APPLE": "AAPL", "NVIDIA": "NVDA", "AMAZON": "AMZN",
@@ -76,6 +77,12 @@ function createCardHTML(ticker) {
             <span class="asset-name" id="name-${ticker}">${ticker}</span>
             <span class="asset-ticker">${ticker}</span>
         </div>
+        <div class="timeframe-selector">
+            <button class="tf-btn active" onclick="changeTimeframe('${ticker}', '1d', this)">1D</button>
+            <button class="tf-btn" onclick="changeTimeframe('${ticker}', '5d', this)">1W</button>
+            <button class="tf-btn" onclick="changeTimeframe('${ticker}', '1m', this)">1M</button>
+            <button class="tf-btn" onclick="changeTimeframe('${ticker}', '1y', this)">1J</button>
+        </div>
         <div class="asset-price" id="price-${ticker}">Lade...</div>
         <div class="asset-change" id="change-${ticker}">--%</div>
         <div class="chart-container">
@@ -83,23 +90,39 @@ function createCardHTML(ticker) {
         </div>
     `;
     grid.appendChild(card);
+    activeTimeframes[ticker] = "1d";
+}
+
+function changeTimeframe(ticker, range, buttonElement) {
+    const container = buttonElement.parentElement;
+    container.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
+    buttonElement.classList.add('active');
+    
+    activeTimeframes[ticker] = range;
+    fetchRealStockData(ticker);
 }
 
 async function fetchRealStockData(ticker) {
     try {
         const proxyUrl = "https://corsproxy.io/?";
-        const targetUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}&fields=regularMarketPrice,regularMarketChangePercent,longName,shortName,currency,sparkline_historical_data`;
+        const range = activeTimeframes[ticker] || "1d";
+        
+        let interval = "15m";
+        if (range === "5d") interval = "30m";
+        if (range === "1m") interval = "1d";
+        if (range === "1y") interval = "1wk";
+
+        const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=${interval}`;
         
         const response = await fetch(proxyUrl + encodeURIComponent(targetUrl));
         const data = await response.json();
         
-        if (data && data.quoteResponse && data.quoteResponse.result && data.quoteResponse.result[0]) {
-            const stock = data.quoteResponse.result[0];
+        if (data && data.chart && data.chart.result && data.chart.result[0]) {
+            const result = data.chart.result[0];
+            const meta = result.meta;
             
-            let rawPrice = stock.regularMarketPrice;
-            const changePercent = stock.regularMarketChangePercent;
-            const companyName = stock.longName || stock.shortName || ticker;
-            const currency = stock.currency;
+            let rawPrice = meta.regularMarketPrice;
+            const currency = meta.currency;
 
             if (currency === "USD") {
                 rawPrice = rawPrice * usdToEurRate;
@@ -107,9 +130,15 @@ async function fetchRealStockData(ticker) {
                 rawPrice = (rawPrice / 100) * usdToEurRate;
             }
 
-            document.getElementById(`name-${ticker}`).innerText = companyName;
+            document.getElementById(`name-${ticker}`).innerText = ticker;
             document.getElementById(`price-${ticker}`).innerText = `${rawPrice.toFixed(2)} €`;
             
+            let chartData = result.indicators.quote[0].close.filter(val => val !== null);
+            
+            const firstPrice = chartData[0];
+            const lastPrice = chartData[chartData.length - 1];
+            const changePercent = ((lastPrice - firstPrice) / firstPrice) * 100;
+
             const changeElement = document.getElementById(`change-${ticker}`);
             const cardElement = document.getElementById(`card-${ticker}`);
             const isPositive = changePercent >= 0;
@@ -122,12 +151,6 @@ async function fetchRealStockData(ticker) {
                 cardElement.className = "asset-card red-trend";
             }
 
-            let chartData = [];
-            if (stock.sparkline_historical_data && stock.sparkline_historical_data.close) {
-                chartData = stock.sparkline_historical_data.close;
-            } else {
-                chartData = [rawPrice * 0.98, rawPrice * 0.99, rawPrice * 0.97, rawPrice * 1.01, rawPrice * 0.99, rawPrice];
-            }
             drawSparkline(ticker, chartData, isPositive);
 
         } else {
@@ -136,8 +159,6 @@ async function fetchRealStockData(ticker) {
         }
     } catch (error) {
         console.error("Fehler:", error);
-        const priceElement = document.getElementById(`price-${ticker}`);
-        if (priceElement) priceElement.innerText = "Fehler";
     }
 }
 
