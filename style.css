@@ -122,7 +122,7 @@ header h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .asset-name {
@@ -143,6 +143,37 @@ header h1 {
     padding: 4px 8px;
     border-radius: 6px;
     text-transform: uppercase;
+}
+
+.timeframe-selector {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 3px;
+    border-radius: 8px;
+    align-self: flex-start;
+}
+
+.tf-btn {
+    background: transparent;
+    border: none;
+    color: #5c6784;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tf-btn:hover {
+    color: #ffffff;
+}
+
+.tf-btn.active {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
 }
 
 .asset-price {
@@ -188,6 +219,11 @@ canvas {
     background: rgba(34, 197, 94, 0.1);
 }
 
+.green-trend .tf-btn.active {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
 .red-trend {
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
 }
@@ -200,4 +236,9 @@ canvas {
 .red-trend .asset-change {
     color: #ef4444;
     background: rgba(239, 68, 68, 0.1);
+}
+
+.red-trend .tf-btn.active {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
 }
