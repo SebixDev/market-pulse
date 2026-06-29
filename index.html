@@ -13,7 +13,7 @@
         
         <header>
             <h1>Market-Pulse</h1>
-            <p id="live-indicator">● Globale Live-Marktdaten mit Trend-Diagrammen.</p>
+            <p id="live-indicator">● Globale Live-Marktdaten mit flexibler Zeitraum-Auswahl.</p>
             
             <div class="search-container">
                 <input type="text" id="search-input" placeholder="Aktien- oder ETF-Namen eingeben (z.B. Microsoft, S&P 500)...">
@@ -26,6 +26,12 @@
                 <div class="card-header">
                     <span class="asset-name" id="name-AAPL">Apple Inc.</span>
                     <span class="asset-ticker">AAPL</span>
+                </div>
+                <div class="timeframe-selector">
+                    <button class="tf-btn active" onclick="changeTimeframe('AAPL', '1d', this)">1D</button>
+                    <button class="tf-btn" onclick="changeTimeframe('AAPL', '5d', this)">1W</button>
+                    <button class="tf-btn" onclick="changeTimeframe('AAPL', '1m', this)">1M</button>
+                    <button class="tf-btn" onclick="changeTimeframe('AAPL', '1y', this)">1J</button>
                 </div>
                 <div class="asset-price" id="price-AAPL">Lade...</div>
                 <div class="asset-change" id="change-AAPL">--%</div>
