@@ -29,7 +29,7 @@ async function fetchExchangeRate() {
             usdToEurRate = data.rates.EUR;
         }
     } catch (error) {
-        console.error("Fehler beim Laden des Wechselkurses:", error);
+        console.error(error);
     }
 }
 
@@ -158,7 +158,7 @@ async function fetchRealStockData(ticker) {
             if (priceElement) priceElement.innerText = "Nicht gefunden";
         }
     } catch (error) {
-        console.error("Fehler:", error);
+        console.error(error);
     }
 }
 
@@ -192,8 +192,59 @@ document.getElementById("search-input").addEventListener("keypress", (e) => {
     }
 });
 
+function initStarfield() {
+    const canvas = document.getElementById("starfield");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let stars = [];
+    const numStars = 60;
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    for (let i = 0; i < numStars; i++) {
+        stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 1.5 + 0.5,
+            alpha: Math.random(),
+            speed: Math.random() * 0.015 + 0.005
+        });
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        stars.forEach(star => {
+            star.alpha += star.speed;
+            
+            if (star.alpha > 1 || star.alpha < 0) {
+                star.speed = -star.speed;
+            }
+
+            const safeAlpha = Math.max(0, Math.min(1, star.alpha));
+
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${safeAlpha})`;
+            ctx.fill();
+        });
+
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+}
+
 async function init() {
     await fetchExchangeRate();
+    initStarfield();
     trackedTickers.add("AAPL");
     createCardHTML("AAPL");
     fetchRealStockData("AAPL");
