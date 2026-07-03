@@ -86,7 +86,7 @@ function createCardHTML(ticker) {
         <div class="asset-price" id="price-${ticker}">Lade...</div>
         <div class="asset-change" id="change-${ticker}">--%</div>
         <div class="chart-container">
-            <canvas id="chart-${ticker}" width="280" height="80"></canvas>
+            <canvas id="chart-${ticker}" width="220" height="55"></canvas>
         </div>
     `;
     grid.appendChild(card);
@@ -245,10 +245,6 @@ function initStarfield() {
 async function init() {
     await fetchExchangeRate();
     initStarfield();
-    trackedTickers.add("AAPL");
-    createCardHTML("AAPL");
-    fetchRealStockData("AAPL");
-    
     setInterval(updateAllTracks, 30000);
 }
 
