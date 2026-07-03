@@ -1,5 +1,7 @@
 # Market-Pulse 📈
 
+**Stand:** 3. Juli 2026
+
 Ein elegantes, performantes Echtzeit-Dashboard für weltweite Aktien, Indizes und ETFs. Die Anwendung startet mit einer komplett leeren, minimalistischen Oberfläche und baut sich dynamisch auf, sobald Suchen getätigt werden. 
 
 Mehrere eingegebene Werte werden automatisch in kompakten, platzsparenden Karten (Cards) nebeneinander dargestellt.
@@ -38,6 +40,7 @@ Alternativ kannst du den Ordner über eine Erweiterung wie *Live Server* in Visu
 
 ## 🔍 Nutzung & Namens-Mapping
 
+Du kannst direkt nach **Tickern** (z.B. `AAPL`, `MSFT`, `TSLA`) oder nach den **Namen** großer Unternehmen und ETFs suchen. Das integrierte Mapping in der `script.js` übersetzt gängige Begriffe automatisch:
 
 * **Aktien:** Microsoft, Apple, Nvidia, Amazon, Google, Tesla, Mercedes, BMW, SAP, Allianz u.v.m.
 * **ETFs & Krypto:** S&P 500, MSCI World, Nasdaq 100, DAX ETF, Bitcoin ETF, Gold ETF.
