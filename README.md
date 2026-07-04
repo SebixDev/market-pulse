@@ -1,6 +1,6 @@
 # Market-Pulse 📈
 
-**Stand:** 4. Juli 2026
+**Stand:** 05. Juli 2026
 
 Ein elegantes, performantes Echtzeit-Dashboard für weltweite Aktien, Indizes und ETFs. Die Anwendung startet mit einer komplett leeren, minimalistischen Oberfläche und baut sich dynamisch auf, sobald Suchen getätigt werden. 
 
