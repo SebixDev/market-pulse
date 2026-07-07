@@ -1,6 +1,6 @@
 # Market-Pulse 📈
 
-**Stand:** 05. Juli 2026
+**Stand:** 07. Juli 2026
 
 Ein elegantes, performantes Echtzeit-Dashboard für weltweite Aktien, Indizes und ETFs. Die Anwendung startet mit einer komplett leeren, minimalistischen Oberfläche und baut sich dynamisch auf, sobald Suchen getätigt werden. 
 
@@ -11,6 +11,7 @@ Mehrere eingegebene Werte werden automatisch in kompakten, platzsparenden Karten
 ## ✨ Features
 
 * **Clean-Start-Prinzip:** Keine voreingestellten Charts beim Laden der Seite. Das Dashboard bleibt völlig leer, bis eine gezielte Suche gestartet wird.
+* **Automatische Namensauflösung:** Das Dashboard zieht sich die vollständigen Firmen- und Asset-Namen (z. B. *Microsoft Corporation* statt nur *MSFT*) live aus den API-Metadaten. Das offizielle Kürzel bleibt als dezenter Ticker daneben bestehen.
 * **Kompakte Multi-Cards:** Suchst du nach mehreren Werten, ordnen sich diese automatisch in verkleinerten, eleganten Kacheln im responsiven Grid an.
 * **Echtzeit-Daten:** Direkte Abfrage von Live-Marktdaten (inklusive automatischer Währungsumrechnung von USD/GBp in Euro).
 * **Interaktive Sparklines:** Jede Karte enthält einen kompakten Mini-Chart, der sich visuell (Grün/Rot) an die Performance des gewählten Zeitraums anpasst.
@@ -27,16 +28,6 @@ Mehrere eingegebene Werte werden automatisch in kompakten, platzsparenden Karten
 
 ---
 
-## 🚀 Installation & Start
-
-Da das Projekt ohne Build-Tools oder Frameworks auskommt, ist der Start kinderleicht:
-
-1. Lade die drei Projektdateien (`index.html`, `style.css`, `script.js`) herunter und speichere sie im selben Ordner.
-2. Öffne die `index.html` per Doppelklick in einem beliebigen modernen Webbrowser.
-
-Alternativ kannst du den Ordner über eine Erweiterung wie *Live Server* in Visual Studio Code starten.
-
----
 
 ## 🔍 Nutzung & Namens-Mapping
 
