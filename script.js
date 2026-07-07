@@ -123,6 +123,7 @@ async function fetchRealStockData(ticker) {
             
             let rawPrice = meta.regularMarketPrice;
             const currency = meta.currency;
+            const longName = meta.longName || ticker;
 
             if (currency === "USD") {
                 rawPrice = rawPrice * usdToEurRate;
@@ -130,7 +131,7 @@ async function fetchRealStockData(ticker) {
                 rawPrice = (rawPrice / 100) * usdToEurRate;
             }
 
-            document.getElementById(`name-${ticker}`).innerText = ticker;
+            document.getElementById(`name-${ticker}`).innerText = longName;
             document.getElementById(`price-${ticker}`).innerText = `${rawPrice.toFixed(2)} €`;
             
             let chartData = result.indicators.quote[0].close.filter(val => val !== null);
