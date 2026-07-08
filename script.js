@@ -75,12 +75,15 @@ function createCardHTML(ticker) {
     card.innerHTML = `
         <div class="card-header">
             <span class="asset-name" id="name-${ticker}">${ticker}</span>
-            <span class="asset-ticker">${ticker}</span>
+            <div class="header-right">
+                <span class="asset-ticker">${ticker}</span>
+                <button class="remove-btn" onclick="removeCard('${ticker}')">✕</button>
+            </div>
         </div>
         <div class="timeframe-selector">
             <button class="tf-btn active" onclick="changeTimeframe('${ticker}', '1d', this)">1D</button>
             <button class="tf-btn" onclick="changeTimeframe('${ticker}', '5d', this)">1W</button>
-            <button class="tf-btn" onclick="changeTimeframe('${ticker}', '1m', this)">1M</button>
+            <button class="tf-btn" onclick="changeTimeframe('${ticker}', '3m', this)">3M</button>
             <button class="tf-btn" onclick="changeTimeframe('${ticker}', '1y', this)">1J</button>
         </div>
         <div class="asset-price" id="price-${ticker}">Lade...</div>
@@ -91,6 +94,15 @@ function createCardHTML(ticker) {
     `;
     grid.appendChild(card);
     activeTimeframes[ticker] = "1d";
+}
+
+function removeCard(ticker) {
+    const card = document.getElementById(`card-${ticker}`);
+    if (card) {
+        card.remove();
+    }
+    trackedTickers.delete(ticker);
+    delete activeTimeframes[ticker];
 }
 
 function changeTimeframe(ticker, range, buttonElement) {
@@ -109,7 +121,7 @@ async function fetchRealStockData(ticker) {
         
         let interval = "15m";
         if (range === "5d") interval = "30m";
-        if (range === "1m") interval = "1d";
+        if (range === "3m") interval = "1d";
         if (range === "1y") interval = "1wk";
 
         const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=${interval}`;
@@ -131,28 +143,38 @@ async function fetchRealStockData(ticker) {
                 rawPrice = (rawPrice / 100) * usdToEurRate;
             }
 
-            document.getElementById(`name-${ticker}`).innerText = longName;
-            document.getElementById(`price-${ticker}`).innerText = `${rawPrice.toFixed(2)} €`;
+            const nameEl = document.getElementById(`name-${ticker}`);
+            if (nameEl) nameEl.innerText = longName;
             
-            let chartData = result.indicators.quote[0].close.filter(val => val !== null);
+            const priceEl = document.getElementById(`price-${ticker}`);
+            if (priceEl) priceEl.innerText = `${rawPrice.toFixed(2)} €`;
             
-            const firstPrice = chartData[0];
-            const lastPrice = chartData[chartData.length - 1];
-            const changePercent = ((lastPrice - firstPrice) / firstPrice) * 100;
+            let chartData = (result.indicators.quote[0].close || []).filter(val => val !== null && val !== undefined);
+            
+            if (chartData.length >= 2) {
+                const firstPrice = chartData[0];
+                const lastPrice = chartData[chartData.length - 1];
+                const changePercent = ((lastPrice - firstPrice) / firstPrice) * 100;
 
-            const changeElement = document.getElementById(`change-${ticker}`);
-            const cardElement = document.getElementById(`card-${ticker}`);
-            const isPositive = changePercent >= 0;
+                const changeElement = document.getElementById(`change-${ticker}`);
+                const cardElement = document.getElementById(`card-${ticker}`);
+                const isPositive = changePercent >= 0;
 
-            if (isPositive) {
-                changeElement.innerText = `+${changePercent.toFixed(2)}%`;
-                cardElement.className = "asset-card green-trend";
+                if (changeElement && cardElement) {
+                    if (isPositive) {
+                        changeElement.innerText = `+${changePercent.toFixed(2)}%`;
+                        cardElement.className = "asset-card green-trend";
+                    } else {
+                        changeElement.innerText = `${changePercent.toFixed(2)}%`;
+                        cardElement.className = "asset-card red-trend";
+                    }
+                }
+
+                drawSparkline(ticker, chartData, isPositive);
             } else {
-                changeElement.innerText = `${changePercent.toFixed(2)}%`;
-                cardElement.className = "asset-card red-trend";
+                const changeElement = document.getElementById(`change-${ticker}`);
+                if (changeElement) changeElement.innerText = "0.00%";
             }
-
-            drawSparkline(ticker, chartData, isPositive);
 
         } else {
             const priceElement = document.getElementById(`price-${ticker}`);
