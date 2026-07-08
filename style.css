@@ -122,6 +122,7 @@ header h1 {
     transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 .asset-card:hover {
@@ -133,7 +134,7 @@ header h1 {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 6px;
-    gap: 8px;
+    gap: 24px;
 }
 
 .asset-name {
@@ -146,6 +147,13 @@ header h1 {
     flex-grow: 1;
 }
 
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
 .asset-ticker {
     font-size: 0.75rem;
     font-weight: 700;
@@ -154,7 +162,21 @@ header h1 {
     padding: 2px 6px;
     border-radius: 4px;
     text-transform: uppercase;
-    flex-shrink: 0;
+}
+
+.remove-btn {
+    background: transparent;
+    border: none;
+    color: #5c6784;
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 2px;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+.remove-btn:hover {
+    color: #ef4444;
 }
 
 .timeframe-selector {
@@ -171,6 +193,7 @@ header h1 {
     background: transparent;
     border: none;
     color: #5c6784;
+    font-size: 0.7 Brass;
     font-size: 0.7rem;
     font-weight: 700;
     padding: 3px 8px;
