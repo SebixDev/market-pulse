@@ -184,9 +184,7 @@ async function fetchRealStockData(ticker) {
             if (chartData.length >= 2) {
                 let firstPrice = chartData[0];
                 
-                if (range === "3m" && result.meta.chartPreviousClose !== undefined) {
-                    firstPrice = result.meta.chartPreviousClose;
-                } else if (range === "1d" && result.meta.previousClose !== undefined) {
+                if (range === "1d" && result.meta.previousClose !== undefined) {
                     firstPrice = result.meta.previousClose;
                 }
 
