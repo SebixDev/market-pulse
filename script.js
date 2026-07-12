@@ -33,6 +33,33 @@ async function fetchExchangeRate() {
     }
 }
 
+function saveToLocalStorage() {
+    const dataToSave = {
+        tickers: Array.from(trackedTickers),
+        timeframes: activeTimeframes
+    };
+    localStorage.setItem("marketPulseWatchlist", JSON.stringify(dataToSave));
+}
+
+function loadFromLocalStorage() {
+    const savedData = localStorage.getItem("marketPulseWatchlist");
+    if (savedData) {
+        try {
+            const parsed = JSON.parse(savedData);
+            if (parsed.tickers && Array.isArray(parsed.tickers)) {
+                parsed.tickers.forEach(ticker => {
+                    trackedTickers.add(ticker);
+                    const savedTf = (parsed.timeframes && parsed.timeframes[ticker]) ? parsed.timeframes[ticker] : "1d";
+                    createCardHTML(ticker, savedTf);
+                    fetchRealStockData(ticker);
+                });
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+}
+
 function drawSparkline(ticker, sparklineData, isPositive) {
     const canvas = document.getElementById(`chart-${ticker}`);
     if (!canvas) return;
@@ -65,7 +92,7 @@ function drawSparkline(ticker, sparklineData, isPositive) {
     ctx.shadowBlur = 0; 
 }
 
-function createCardHTML(ticker) {
+function createCardHTML(ticker, initialTf = "1d") {
     const grid = document.getElementById("market-grid");
     if (document.getElementById(`card-${ticker}`)) return;
 
@@ -81,10 +108,10 @@ function createCardHTML(ticker) {
             </div>
         </div>
         <div class="timeframe-selector">
-            <button class="tf-btn active" onclick="changeTimeframe('${ticker}', '1d', this)">1D</button>
-            <button class="tf-btn" onclick="changeTimeframe('${ticker}', '5d', this)">1W</button>
-            <button class="tf-btn" onclick="changeTimeframe('${ticker}', '3m', this)">3M</button>
-            <button class="tf-btn" onclick="changeTimeframe('${ticker}', '1y', this)">1J</button>
+            <button class="tf-btn ${initialTf === '1d' ? 'active' : ''}" onclick="changeTimeframe('${ticker}', '1d', this)">1D</button>
+            <button class="tf-btn ${initialTf === '5d' ? 'active' : ''}" onclick="changeTimeframe('${ticker}', '5d', this)">1W</button>
+            <button class="tf-btn ${initialTf === '3m' ? 'active' : ''}" onclick="changeTimeframe('${ticker}', '3m', this)">3M</button>
+            <button class="tf-btn ${initialTf === '1y' ? 'active' : ''}" onclick="changeTimeframe('${ticker}', '1y', this)">1J</button>
         </div>
         <div class="asset-price" id="price-${ticker}">Lade...</div>
         <div class="asset-change" id="change-${ticker}">--%</div>
@@ -93,7 +120,7 @@ function createCardHTML(ticker) {
         </div>
     `;
     grid.appendChild(card);
-    activeTimeframes[ticker] = "1d";
+    activeTimeframes[ticker] = initialTf;
 }
 
 function removeCard(ticker) {
@@ -103,6 +130,7 @@ function removeCard(ticker) {
     }
     trackedTickers.delete(ticker);
     delete activeTimeframes[ticker];
+    saveToLocalStorage();
 }
 
 function changeTimeframe(ticker, range, buttonElement) {
@@ -111,6 +139,7 @@ function changeTimeframe(ticker, range, buttonElement) {
     buttonElement.classList.add('active');
     
     activeTimeframes[ticker] = range;
+    saveToLocalStorage();
     fetchRealStockData(ticker);
 }
 
@@ -149,10 +178,18 @@ async function fetchRealStockData(ticker) {
             const priceEl = document.getElementById(`price-${ticker}`);
             if (priceEl) priceEl.innerText = `${rawPrice.toFixed(2)} €`;
             
-            let chartData = (result.indicators.quote[0].close || []).filter(val => val !== null && val !== undefined);
+            let rawChartData = result.indicators.quote[0].close || [];
+            let chartData = rawChartData.filter(val => val !== null && val !== undefined && !isNaN(val));
             
             if (chartData.length >= 2) {
-                const firstPrice = chartData[0];
+                let firstPrice = chartData[0];
+                
+                if (range === "3m" && result.meta.chartPreviousClose !== undefined) {
+                    firstPrice = result.meta.chartPreviousClose;
+                } else if (range === "1d" && result.meta.previousClose !== undefined) {
+                    firstPrice = result.meta.previousClose;
+                }
+
                 const lastPrice = chartData[chartData.length - 1];
                 const changePercent = ((lastPrice - firstPrice) / firstPrice) * 100;
 
@@ -203,8 +240,9 @@ document.getElementById("search-button").addEventListener("click", () => {
         }
 
         trackedTickers.add(ticker);
-        createCardHTML(ticker);
+        createCardHTML(ticker, "1d");
         fetchRealStockData(ticker);
+        saveToLocalStorage();
         document.getElementById("search-input").value = "";
     }
 });
@@ -268,6 +306,7 @@ function initStarfield() {
 async function init() {
     await fetchExchangeRate();
     initStarfield();
+    loadFromLocalStorage();
     setInterval(updateAllTracks, 30000);
 }
 
