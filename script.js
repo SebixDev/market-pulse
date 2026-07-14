@@ -1,6 +1,7 @@
 let usdToEurRate = 0.92;
 const trackedTickers = new Set();
 const activeTimeframes = {};
+const currentPercentages = {};
 
 const nameToTickerMap = {
     "MICROSOFT": "MSFT", "APPLE": "AAPL", "NVIDIA": "NVDA", "AMAZON": "AMZN",
@@ -30,6 +31,22 @@ async function fetchExchangeRate() {
         }
     } catch (error) {
         console.error(error);
+    }
+}
+
+function updateGlobalAura() {
+    const values = Object.values(currentPercentages);
+    if (values.length === 0) {
+        document.body.className = "aura-neutral";
+        return;
+    }
+    const sum = values.reduce((a, b) => a + b, 0);
+    if (sum > 0.05) {
+        document.body.className = "aura-positive";
+    } else if (sum < -0.05) {
+        document.body.className = "aura-negative";
+    } else {
+        document.body.className = "aura-neutral";
     }
 }
 
@@ -130,7 +147,9 @@ function removeCard(ticker) {
     }
     trackedTickers.delete(ticker);
     delete activeTimeframes[ticker];
+    delete currentPercentages[ticker];
     saveToLocalStorage();
+    updateGlobalAura();
 }
 
 function changeTimeframe(ticker, range, buttonElement) {
@@ -191,6 +210,8 @@ async function fetchRealStockData(ticker) {
                 const lastPrice = chartData[chartData.length - 1];
                 const changePercent = ((lastPrice - firstPrice) / firstPrice) * 100;
 
+                currentPercentages[ticker] = changePercent;
+
                 const changeElement = document.getElementById(`change-${ticker}`);
                 const cardElement = document.getElementById(`card-${ticker}`);
                 const isPositive = changePercent >= 0;
@@ -209,7 +230,10 @@ async function fetchRealStockData(ticker) {
             } else {
                 const changeElement = document.getElementById(`change-${ticker}`);
                 if (changeElement) changeElement.innerText = "0.00%";
+                currentPercentages[ticker] = 0;
             }
+
+            updateGlobalAura();
 
         } else {
             const priceElement = document.getElementById(`price-${ticker}`);
