@@ -4,21 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>market-pulse</title>
-    <meta name="description" content="Ein elegantes Echtzeit-Dashboard für die weltweit größten Aktien.">
+    <meta name="description" content="Ein elegantes Echtzeit-Dashboard für die weltweit größten Aktien mit dynamischer Markt-Aura.">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <canvas id="starfield"></canvas>
+    <div id="aura-glow"></div>
 
     <div id="dashboard-container">
         
         <header>
             <h1>Market-Pulse</h1>
-            <p id="live-indicator">● Globale Live-Marktdaten mit flexibler Zeitraum-Auswahl.</p>
+            <p id="live-indicator"><span id="pulse-dot">●</span> Globale Live-Marktdaten mit flexibler Zeitraum-Auswahl.</p>
             
             <div class="search-container">
-                <input type="text" id="search-input" placeholder="Aktien- oder ETF-Namen eingeben ...">
+                <input type="text" id="search-input" placeholder="Aktien- oder ETF-Namen eingeben (z.B. Microsoft, S&P 500)...">
                 <button id="search-button">Suchen</button>
             </div>
         </header>
