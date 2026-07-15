@@ -1,7 +1,24 @@
-let usdToEurRate = 0.92;
-const trackedTickers = new Set();
-const activeTimeframes = {};
+const TIMEFRAMES = {
+    "1d":  { label: "1D", interval: "15m" },
+    "5d":  { label: "1W", interval: "30m" },
+    "3mo": { label: "3M", interval: "1d"  },
+    "1y":  { label: "1J", interval: "1wk" }
+};
+
+const DEFAULT_TIMEFRAME   = "1d";
+const STORAGE_KEY         = "marketPulseWatchlist";
+const REFRESH_INTERVAL_MS = 30_000;
+const TICKER_PATTERN      = /^[A-Z0-9.\-^]{1,12}$/;
+const PROXY_URL           = "https://corsproxy.io/?";
+const AURA_THRESHOLD      = 0.05;
+const LEGACY_TIMEFRAMES   = { "3m": "3mo", "1w": "5d", "1j": "1y" };
+
+const rates              = { EUR: 0.92, GBP: 0.79 };
+const trackedTickers     = new Set();
+const activeTimeframes   = {};
 const currentPercentages = {};
+const lastQuotes         = {};
+const requestCounters    = {};
 
 const nameToTickerMap = {
     "MICROSOFT": "MSFT", "APPLE": "AAPL", "NVIDIA": "NVDA", "AMAZON": "AMZN",
@@ -22,314 +39,411 @@ const nameToTickerMap = {
     "DIVIDENDEN ETF": "VYM", "VANGUARD HIGH DIVIDEND": "VYM"
 };
 
-async function fetchExchangeRate() {
+async function fetchExchangeRates() {
     try {
         const response = await fetch("https://open.er-api.com/v6/latest/USD");
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
         const data = await response.json();
-        if (data && data.rates && data.rates.EUR) {
-            usdToEurRate = data.rates.EUR;
-        }
+        if (data?.rates?.EUR) rates.EUR = data.rates.EUR;
+        if (data?.rates?.GBP) rates.GBP = data.rates.GBP;
     } catch (error) {
-        console.error(error);
+        console.error("Wechselkurse nicht verfügbar, nutze Fallback-Werte:", error);
     }
 }
 
-function updateGlobalAura() {
-    const values = Object.values(currentPercentages);
-    if (values.length === 0) {
-        document.body.className = "aura-neutral";
-        return;
-    }
-    const sum = values.reduce((a, b) => a + b, 0);
-    if (sum > 0.05) {
-        document.body.className = "aura-positive";
-    } else if (sum < -0.05) {
-        document.body.className = "aura-negative";
-    } else {
-        document.body.className = "aura-neutral";
+function toEur(price, currency) {
+    switch (currency) {
+        case "EUR": return price;
+        case "USD": return price * rates.EUR;
+        case "GBP": return price * (rates.EUR / rates.GBP);
+        case "GBp": return (price / 100) * (rates.EUR / rates.GBP);
+        default:    return price;
     }
 }
 
-function saveToLocalStorage() {
-    const dataToSave = {
-        tickers: Array.from(trackedTickers),
-        timeframes: activeTimeframes
-    };
-    localStorage.setItem("marketPulseWatchlist", JSON.stringify(dataToSave));
+function buildChartUrl(ticker, range) {
+    const interval = TIMEFRAMES[range].interval;
+    const targetUrl =
+        `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}` +
+        `?range=${range}&interval=${interval}`;
+    return PROXY_URL + encodeURIComponent(targetUrl);
 }
 
-function loadFromLocalStorage() {
-    const savedData = localStorage.getItem("marketPulseWatchlist");
-    if (savedData) {
-        try {
-            const parsed = JSON.parse(savedData);
-            if (parsed.tickers && Array.isArray(parsed.tickers)) {
-                parsed.tickers.forEach(ticker => {
-                    trackedTickers.add(ticker);
-                    const savedTf = (parsed.timeframes && parsed.timeframes[ticker]) ? parsed.timeframes[ticker] : "1d";
-                    createCardHTML(ticker, savedTf);
-                    fetchRealStockData(ticker);
-                });
-            }
-        } catch (e) {
-            console.error(e);
+async function fetchQuote(ticker, range) {
+    const response = await fetch(buildChartUrl(ticker, range));
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const data = await response.json();
+    const result = data?.chart?.result?.[0];
+    if (!result) throw new Error("Keine Daten für diesen Ticker");
+
+    const meta = result.meta;
+    const price = toEur(meta.regularMarketPrice, meta.currency);
+
+    const chartData = (result.indicators?.quote?.[0]?.close ?? [])
+        .filter(value => typeof value === "number" && !Number.isNaN(value));
+
+    let changePercent = 0;
+    if (chartData.length >= 2) {
+        const firstPrice = (range === "1d" && typeof meta.previousClose === "number")
+            ? meta.previousClose
+            : chartData[0];
+        const lastPrice = chartData[chartData.length - 1];
+        if (firstPrice) {
+            changePercent = ((lastPrice - firstPrice) / firstPrice) * 100;
         }
     }
+
+    return {
+        name: meta.longName || ticker,
+        price,
+        changePercent,
+        chartData
+    };
+}
+
+async function updateAsset(ticker) {
+    const requestId = requestCounters[ticker] = (requestCounters[ticker] ?? 0) + 1;
+    const range = activeTimeframes[ticker] ?? DEFAULT_TIMEFRAME;
+
+    try {
+        const quote = await fetchQuote(ticker, range);
+        if (requestId !== requestCounters[ticker] || !trackedTickers.has(ticker)) return;
+        renderCard(ticker, quote);
+    } catch (error) {
+        if (requestId !== requestCounters[ticker] || !trackedTickers.has(ticker)) return;
+        console.error(`Fehler bei ${ticker}:`, error);
+        renderError(ticker);
+    }
+
+    updateGlobalAura();
+}
+
+function updateAllTracks() {
+    trackedTickers.forEach(updateAsset);
+}
+
+function renderCard(ticker, quote) {
+    const card = document.getElementById(`card-${ticker}`);
+    if (!card) return;
+
+    const isPositive = quote.changePercent >= 0;
+    currentPercentages[ticker] = quote.changePercent;
+    lastQuotes[ticker] = quote;
+
+    card.querySelector(".asset-name").textContent  = quote.name;
+    card.querySelector(".asset-price").textContent = `${quote.price.toFixed(2)} €`;
+
+    const sign = isPositive ? "+" : "";
+    card.querySelector(".asset-change").textContent = `${sign}${quote.changePercent.toFixed(2)}%`;
+
+    card.classList.toggle("green-trend", isPositive);
+    card.classList.toggle("red-trend", !isPositive);
+
+    drawSparkline(ticker, quote.chartData, isPositive);
+}
+
+function renderError(ticker) {
+    const card = document.getElementById(`card-${ticker}`);
+    if (!card) return;
+
+    card.querySelector(".asset-price").textContent  = "Nicht verfügbar";
+    card.querySelector(".asset-change").textContent = "--%";
+    card.classList.remove("green-trend", "red-trend");
+    delete currentPercentages[ticker];
+    delete lastQuotes[ticker];
+}
+
+function redrawAllSparklines() {
+    Object.entries(lastQuotes).forEach(([ticker, quote]) => {
+        drawSparkline(ticker, quote.chartData, quote.changePercent >= 0);
+    });
 }
 
 function drawSparkline(ticker, sparklineData, isPositive) {
     const canvas = document.getElementById(`chart-${ticker}`);
     if (!canvas) return;
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const dpr  = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    canvas.width  = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, rect.width, rect.height);
+
     if (sparklineData.length < 2) return;
 
-    const min = Math.min(...sparklineData);
-    const max = Math.max(...sparklineData);
-    const range = max - min === 0 ? 1 : max - min;
+    const min   = Math.min(...sparklineData);
+    const max   = Math.max(...sparklineData);
+    const range = (max - min) || 1;
+
+    const padding = rect.height * 0.1;
+    const usableHeight = rect.height - padding * 2;
 
     ctx.beginPath();
-    for (let i = 0; i < sparklineData.length; i++) {
-        const x = (i / (sparklineData.length - 1)) * canvas.width;
-        const y = canvas.height - ((sparklineData[i] - min) / range) * canvas.height * 0.8 - canvas.height * 0.1;
-        
+    sparklineData.forEach((value, i) => {
+        const x = (i / (sparklineData.length - 1)) * rect.width;
+        const y = rect.height - padding - ((value - min) / range) * usableHeight;
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
-    }
+    });
 
-    ctx.strokeStyle = isPositive ? "#22c55e" : "#ef4444";
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.shadowBlur = 4;
-    ctx.shadowColor = isPositive ? "#22c55e" : "#ef4444";
+    const color = isPositive ? "#22c55e" : "#ef4444";
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 2;
+    ctx.lineCap     = "round";
+    ctx.lineJoin    = "round";
+    ctx.shadowBlur  = 4;
+    ctx.shadowColor = color;
     ctx.stroke();
-    ctx.shadowBlur = 0; 
+    ctx.shadowBlur  = 0;
 }
 
-function createCardHTML(ticker, initialTf = "1d") {
+function setAura(state) {
+    document.body.classList.remove("aura-positive", "aura-negative", "aura-neutral");
+    document.body.classList.add(state);
+}
+
+function updateGlobalAura() {
+    const values = Object.values(currentPercentages);
+    if (values.length === 0) {
+        setAura("aura-neutral");
+        return;
+    }
+
+    const average = values.reduce((a, b) => a + b, 0) / values.length;
+
+    if (average > AURA_THRESHOLD)       setAura("aura-positive");
+    else if (average < -AURA_THRESHOLD) setAura("aura-negative");
+    else                                setAura("aura-neutral");
+}
+
+function createCard(ticker, initialTf = DEFAULT_TIMEFRAME) {
     const grid = document.getElementById("market-grid");
     if (document.getElementById(`card-${ticker}`)) return;
+
+    const timeframe = TIMEFRAMES[initialTf] ? initialTf : DEFAULT_TIMEFRAME;
 
     const card = document.createElement("div");
     card.className = "asset-card";
     card.id = `card-${ticker}`;
+
+    const buttons = Object.entries(TIMEFRAMES).map(([range, config]) => `
+        <button class="tf-btn ${range === timeframe ? "active" : ""}" data-range="${range}">
+            ${config.label}
+        </button>
+    `).join("");
+
     card.innerHTML = `
         <div class="card-header">
-            <span class="asset-name" id="name-${ticker}">${ticker}</span>
+            <span class="asset-name"></span>
             <div class="header-right">
-                <span class="asset-ticker">${ticker}</span>
-                <button class="remove-btn" onclick="removeCard('${ticker}')">✕</button>
+                <span class="asset-ticker"></span>
+                <button class="remove-btn" aria-label="Entfernen">✕</button>
             </div>
         </div>
-        <div class="timeframe-selector">
-            <button class="tf-btn ${initialTf === '1d' ? 'active' : ''}" onclick="changeTimeframe('${ticker}', '1d', this)">1D</button>
-            <button class="tf-btn ${initialTf === '5d' ? 'active' : ''}" onclick="changeTimeframe('${ticker}', '5d', this)">1W</button>
-            <button class="tf-btn ${initialTf === '3m' ? 'active' : ''}" onclick="changeTimeframe('${ticker}', '3m', this)">3M</button>
-            <button class="tf-btn ${initialTf === '1y' ? 'active' : ''}" onclick="changeTimeframe('${ticker}', '1y', this)">1J</button>
-        </div>
-        <div class="asset-price" id="price-${ticker}">Lade...</div>
-        <div class="asset-change" id="change-${ticker}">--%</div>
+        <div class="timeframe-selector">${buttons}</div>
+        <div class="asset-price">Lade...</div>
+        <div class="asset-change">--%</div>
         <div class="chart-container">
-            <canvas id="chart-${ticker}" width="220" height="55"></canvas>
+            <canvas id="chart-${ticker}"></canvas>
         </div>
     `;
+
+    card.querySelector(".asset-name").textContent   = ticker;
+    card.querySelector(".asset-ticker").textContent = ticker;
+
+    card.querySelector(".remove-btn")
+        .addEventListener("click", () => removeCard(ticker));
+
+    card.querySelectorAll(".tf-btn").forEach(btn => {
+        btn.addEventListener("click", () => changeTimeframe(ticker, btn.dataset.range, btn));
+    });
+
     grid.appendChild(card);
-    activeTimeframes[ticker] = initialTf;
+    activeTimeframes[ticker] = timeframe;
 }
 
 function removeCard(ticker) {
-    const card = document.getElementById(`card-${ticker}`);
-    if (card) {
-        card.remove();
-    }
+    document.getElementById(`card-${ticker}`)?.remove();
+
     trackedTickers.delete(ticker);
     delete activeTimeframes[ticker];
     delete currentPercentages[ticker];
+    delete lastQuotes[ticker];
+    delete requestCounters[ticker];
+
     saveToLocalStorage();
     updateGlobalAura();
 }
 
 function changeTimeframe(ticker, range, buttonElement) {
-    const container = buttonElement.parentElement;
-    container.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
-    buttonElement.classList.add('active');
-    
+    if (!TIMEFRAMES[range]) return;
+
+    buttonElement.parentElement
+        .querySelectorAll(".tf-btn")
+        .forEach(btn => btn.classList.remove("active"));
+    buttonElement.classList.add("active");
+
     activeTimeframes[ticker] = range;
     saveToLocalStorage();
-    fetchRealStockData(ticker);
+    updateAsset(ticker);
 }
 
-async function fetchRealStockData(ticker) {
+function addTicker(input) {
+    const cleanInput = input.trim().toUpperCase();
+    if (!cleanInput) return false;
+
+    const ticker = nameToTickerMap[cleanInput] ?? cleanInput;
+    if (!TICKER_PATTERN.test(ticker)) return false;
+    if (trackedTickers.has(ticker)) return false;
+
+    trackedTickers.add(ticker);
+    createCard(ticker, DEFAULT_TIMEFRAME);
+    updateAsset(ticker);
+    saveToLocalStorage();
+    return true;
+}
+
+function saveToLocalStorage() {
     try {
-        const proxyUrl = "https://corsproxy.io/?";
-        const range = activeTimeframes[ticker] || "1d";
-        
-        let interval = "15m";
-        if (range === "5d") interval = "30m";
-        if (range === "3m") interval = "1d";
-        if (range === "1y") interval = "1wk";
-
-        const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=${interval}`;
-        
-        const response = await fetch(proxyUrl + encodeURIComponent(targetUrl));
-        const data = await response.json();
-        
-        if (data && data.chart && data.chart.result && data.chart.result[0]) {
-            const result = data.chart.result[0];
-            const meta = result.meta;
-            
-            let rawPrice = meta.regularMarketPrice;
-            const currency = meta.currency;
-            const longName = meta.longName || ticker;
-
-            if (currency === "USD") {
-                rawPrice = rawPrice * usdToEurRate;
-            } else if (currency === "GBp") {
-                rawPrice = (rawPrice / 100) * usdToEurRate;
-            }
-
-            const nameEl = document.getElementById(`name-${ticker}`);
-            if (nameEl) nameEl.innerText = longName;
-            
-            const priceEl = document.getElementById(`price-${ticker}`);
-            if (priceEl) priceEl.innerText = `${rawPrice.toFixed(2)} €`;
-            
-            let rawChartData = result.indicators.quote[0].close || [];
-            let chartData = rawChartData.filter(val => val !== null && val !== undefined && !isNaN(val));
-            
-            if (chartData.length >= 2) {
-                let firstPrice = chartData[0];
-                
-                if (range === "1d" && result.meta.previousClose !== undefined) {
-                    firstPrice = result.meta.previousClose;
-                }
-
-                const lastPrice = chartData[chartData.length - 1];
-                const changePercent = ((lastPrice - firstPrice) / firstPrice) * 100;
-
-                currentPercentages[ticker] = changePercent;
-
-                const changeElement = document.getElementById(`change-${ticker}`);
-                const cardElement = document.getElementById(`card-${ticker}`);
-                const isPositive = changePercent >= 0;
-
-                if (changeElement && cardElement) {
-                    if (isPositive) {
-                        changeElement.innerText = `+${changePercent.toFixed(2)}%`;
-                        cardElement.className = "asset-card green-trend";
-                    } else {
-                        changeElement.innerText = `${changePercent.toFixed(2)}%`;
-                        cardElement.className = "asset-card red-trend";
-                    }
-                }
-
-                drawSparkline(ticker, chartData, isPositive);
-            } else {
-                const changeElement = document.getElementById(`change-${ticker}`);
-                if (changeElement) changeElement.innerText = "0.00%";
-                currentPercentages[ticker] = 0;
-            }
-
-            updateGlobalAura();
-
-        } else {
-            const priceElement = document.getElementById(`price-${ticker}`);
-            if (priceElement) priceElement.innerText = "Nicht gefunden";
-        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            tickers: Array.from(trackedTickers),
+            timeframes: activeTimeframes
+        }));
     } catch (error) {
-        console.error(error);
+        console.error("Speichern fehlgeschlagen:", error);
     }
 }
 
-function updateAllTracks() {
-    trackedTickers.forEach(ticker => {
-        fetchRealStockData(ticker);
-    });
+function normalizeTimeframe(value) {
+    const migrated = LEGACY_TIMEFRAMES[value] ?? value;
+    return TIMEFRAMES[migrated] ? migrated : DEFAULT_TIMEFRAME;
 }
 
-document.getElementById("search-button").addEventListener("click", () => {
-    const rawInput = document.getElementById("search-input").value.trim();
-    const cleanInput = rawInput.toUpperCase();
-    
-    if (cleanInput) {
-        let ticker = cleanInput;
+function loadFromLocalStorage() {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    if (!savedData) return;
 
-        if (nameToTickerMap[cleanInput]) {
-            ticker = nameToTickerMap[cleanInput];
-        }
+    try {
+        const parsed = JSON.parse(savedData);
+        if (!Array.isArray(parsed?.tickers)) return;
 
-        trackedTickers.add(ticker);
-        createCardHTML(ticker, "1d");
-        fetchRealStockData(ticker);
-        saveToLocalStorage();
-        document.getElementById("search-input").value = "";
+        parsed.tickers
+            .filter(ticker => typeof ticker === "string" && TICKER_PATTERN.test(ticker))
+            .forEach(ticker => {
+                trackedTickers.add(ticker);
+                createCard(ticker, normalizeTimeframe(parsed.timeframes?.[ticker]));
+                updateAsset(ticker);
+            });
+    } catch (error) {
+        console.error("Gespeicherte Watchlist konnte nicht gelesen werden:", error);
     }
-});
-
-document.getElementById("search-input").addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-        document.getElementById("search-button").click();
-    }
-});
+}
 
 function initStarfield() {
     const canvas = document.getElementById("starfield");
     if (!canvas) return;
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    const NUM_STARS = 60;
     let stars = [];
-    const numStars = 60;
+    let animationId = null;
 
     function resizeCanvas() {
-        canvas.width = window.innerWidth;
+        canvas.width  = window.innerWidth;
         canvas.height = window.innerHeight;
     }
-    resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
 
-    for (let i = 0; i < numStars; i++) {
-        stars.push({
+    function createStars() {
+        stars = Array.from({ length: NUM_STARS }, () => ({
             x: Math.random() * canvas.width,
             y: Math.random() * canvas.height,
             size: Math.random() * 1.5 + 0.5,
             alpha: Math.random(),
             speed: Math.random() * 0.015 + 0.005
-        });
+        }));
     }
 
     function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         stars.forEach(star => {
             star.alpha += star.speed;
-            
-            if (star.alpha > 1 || star.alpha < 0) {
-                star.speed = -star.speed;
-            }
+            if (star.alpha > 1 || star.alpha < 0) star.speed = -star.speed;
 
-            const safeAlpha = Math.max(0, Math.min(1, star.alpha));
-
+            const safeAlpha = Math.min(1, Math.max(0, star.alpha));
             ctx.beginPath();
             ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(255, 255, 255, ${safeAlpha})`;
             ctx.fill();
         });
 
-        requestAnimationFrame(animate);
+        animationId = requestAnimationFrame(animate);
     }
 
-    animate();
+    function start() {
+        if (animationId === null) animate();
+    }
+
+    function stop() {
+        if (animationId !== null) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+        }
+    }
+
+    resizeCanvas();
+    createStars();
+    start();
+
+    window.addEventListener("resize", () => {
+        resizeCanvas();
+        createStars();
+    });
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) stop();
+        else start();
+    });
+}
+
+function initSearch() {
+    const input  = document.getElementById("search-input");
+    const button = document.getElementById("search-button");
+
+    function submit() {
+        if (addTicker(input.value)) input.value = "";
+    }
+
+    button.addEventListener("click", submit);
+    input.addEventListener("keydown", event => {
+        if (event.key === "Enter") submit();
+    });
 }
 
 async function init() {
-    await fetchExchangeRate();
     initStarfield();
+    initSearch();
+
+    await fetchExchangeRates();
     loadFromLocalStorage();
-    setInterval(updateAllTracks, 30000);
+
+    setInterval(updateAllTracks, REFRESH_INTERVAL_MS);
+
+    let resizeTimer = null;
+    window.addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(redrawAllSparklines, 150);
+    });
 }
 
 init();
