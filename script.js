@@ -13,6 +13,11 @@ const PROXY_URL           = "https://corsproxy.io/?";
 const AURA_THRESHOLD      = 0.05;
 const LEGACY_TIMEFRAMES   = { "3m": "3mo", "1w": "5d", "1j": "1y" };
 
+const TREND_COLORS = {
+    positive: { line: "#22c55e", rgb: "34, 197, 94" },
+    negative: { line: "#ef4444", rgb: "239, 68, 68" }
+};
+
 const rates              = { EUR: 0.92, GBP: 0.79 };
 const trackedTickers     = new Set();
 const activeTimeframes   = {};
@@ -161,6 +166,52 @@ function redrawAllSparklines() {
     });
 }
 
+function calculatePoints(sparklineData, width, height) {
+    const min   = Math.min(...sparklineData);
+    const max   = Math.max(...sparklineData);
+    const range = (max - min) || 1;
+
+    const padding      = height * 0.1;
+    const usableHeight = height - padding * 2;
+
+    return sparklineData.map((value, i) => ({
+        x: (i / (sparklineData.length - 1)) * width,
+        y: height - padding - ((value - min) / range) * usableHeight
+    }));
+}
+
+function fillUnderLine(ctx, points, height, rgb) {
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, `rgba(${rgb}, 0.28)`);
+    gradient.addColorStop(1, `rgba(${rgb}, 0)`);
+
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, height);
+    points.forEach(point => ctx.lineTo(point.x, point.y));
+    ctx.lineTo(points[points.length - 1].x, height);
+    ctx.closePath();
+
+    ctx.fillStyle = gradient;
+    ctx.fill();
+}
+
+function strokeLine(ctx, points, color) {
+    ctx.beginPath();
+    points.forEach((point, i) => {
+        if (i === 0) ctx.moveTo(point.x, point.y);
+        else ctx.lineTo(point.x, point.y);
+    });
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 2;
+    ctx.lineCap     = "round";
+    ctx.lineJoin    = "round";
+    ctx.shadowBlur  = 4;
+    ctx.shadowColor = color;
+    ctx.stroke();
+    ctx.shadowBlur  = 0;
+}
+
 function drawSparkline(ticker, sparklineData, isPositive) {
     const canvas = document.getElementById(`chart-${ticker}`);
     if (!canvas) return;
@@ -179,30 +230,11 @@ function drawSparkline(ticker, sparklineData, isPositive) {
 
     if (sparklineData.length < 2) return;
 
-    const min   = Math.min(...sparklineData);
-    const max   = Math.max(...sparklineData);
-    const range = (max - min) || 1;
+    const points = calculatePoints(sparklineData, rect.width, rect.height);
+    const colors = isPositive ? TREND_COLORS.positive : TREND_COLORS.negative;
 
-    const padding = rect.height * 0.1;
-    const usableHeight = rect.height - padding * 2;
-
-    ctx.beginPath();
-    sparklineData.forEach((value, i) => {
-        const x = (i / (sparklineData.length - 1)) * rect.width;
-        const y = rect.height - padding - ((value - min) / range) * usableHeight;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    });
-
-    const color = isPositive ? "#22c55e" : "#ef4444";
-    ctx.strokeStyle = color;
-    ctx.lineWidth   = 2;
-    ctx.lineCap     = "round";
-    ctx.lineJoin    = "round";
-    ctx.shadowBlur  = 4;
-    ctx.shadowColor = color;
-    ctx.stroke();
-    ctx.shadowBlur  = 0;
+    fillUnderLine(ctx, points, rect.height, colors.rgb);
+    strokeLine(ctx, points, colors.line);
 }
 
 function setAura(state) {
