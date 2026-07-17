@@ -267,12 +267,44 @@ header h1 {
     width: 100%;
     height: 55px;
     margin-top: auto;
+    position: relative;
 }
 
 canvas {
     width: 100%;
     height: 100%;
     display: block;
+    cursor: crosshair;
+}
+
+.chart-tooltip {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    transform: translateX(-50%);
+    padding: 3px 7px;
+    background: rgba(11, 14, 20, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    font-size: 0.65rem;
+    color: #8f9bba;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.chart-tooltip[hidden] {
+    display: none;
+}
+
+.asset-card .asset-change.hover-positive {
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.asset-card .asset-change.hover-negative {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
 }
 
 .green-trend {
