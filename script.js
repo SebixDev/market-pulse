@@ -1,8 +1,8 @@
 const TIMEFRAMES = {
-    "1d":  { label: "1D", interval: "15m" },
-    "5d":  { label: "1W", interval: "30m" },
-    "3mo": { label: "3M", interval: "1d"  },
-    "1y":  { label: "1J", interval: "1wk" }
+    "1d":  { label: "1D", interval: "15m", timeFormat: { hour: "2-digit", minute: "2-digit" } },
+    "5d":  { label: "1W", interval: "30m", timeFormat: { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" } },
+    "3mo": { label: "3M", interval: "1d",  timeFormat: { day: "2-digit", month: "2-digit", year: "numeric" } },
+    "1y":  { label: "1J", interval: "1wk", timeFormat: { day: "2-digit", month: "2-digit", year: "numeric" } }
 };
 
 const DEFAULT_TIMEFRAME   = "1d";
@@ -67,12 +67,39 @@ function toEur(price, currency) {
     }
 }
 
+function formatPrice(value) {
+    return `${value.toFixed(2)} €`;
+}
+
+function formatPercent(value) {
+    const sign = value >= 0 ? "+" : "";
+    return `${sign}${value.toFixed(2)}%`;
+}
+
+function formatTime(unixSeconds, range) {
+    const options = TIMEFRAMES[range]?.timeFormat ?? TIMEFRAMES[DEFAULT_TIMEFRAME].timeFormat;
+    return new Date(unixSeconds * 1000).toLocaleString("de-DE", options);
+}
+
 function buildChartUrl(ticker, range) {
     const interval = TIMEFRAMES[range].interval;
     const targetUrl =
         `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}` +
         `?range=${range}&interval=${interval}`;
     return PROXY_URL + encodeURIComponent(targetUrl);
+}
+
+function buildSeries(result, currency) {
+    const timestamps = result.timestamp ?? [];
+    const closes = result.indicators?.quote?.[0]?.close ?? [];
+
+    return closes
+        .map((close, i) => ({ time: timestamps[i], close }))
+        .filter(point =>
+            typeof point.close === "number" && !Number.isNaN(point.close) &&
+            typeof point.time === "number"
+        )
+        .map(point => ({ time: point.time, close: toEur(point.close, currency) }));
 }
 
 async function fetchQuote(ticker, range) {
@@ -84,27 +111,25 @@ async function fetchQuote(ticker, range) {
     if (!result) throw new Error("Keine Daten für diesen Ticker");
 
     const meta = result.meta;
-    const price = toEur(meta.regularMarketPrice, meta.currency);
+    const series = buildSeries(result, meta.currency);
 
-    const chartData = (result.indicators?.quote?.[0]?.close ?? [])
-        .filter(value => typeof value === "number" && !Number.isNaN(value));
+    let baseline = series[0]?.close;
+    if (range === "1d" && typeof meta.previousClose === "number") {
+        baseline = toEur(meta.previousClose, meta.currency);
+    }
 
     let changePercent = 0;
-    if (chartData.length >= 2) {
-        const firstPrice = (range === "1d" && typeof meta.previousClose === "number")
-            ? meta.previousClose
-            : chartData[0];
-        const lastPrice = chartData[chartData.length - 1];
-        if (firstPrice) {
-            changePercent = ((lastPrice - firstPrice) / firstPrice) * 100;
-        }
+    if (series.length >= 2 && baseline) {
+        changePercent = ((series[series.length - 1].close - baseline) / baseline) * 100;
     }
 
     return {
         name: meta.longName || ticker,
-        price,
+        price: toEur(meta.regularMarketPrice, meta.currency),
         changePercent,
-        chartData
+        baseline,
+        range,
+        series
     };
 }
 
@@ -129,6 +154,25 @@ function updateAllTracks() {
     trackedTickers.forEach(updateAsset);
 }
 
+function showValues(card, price, percent) {
+    const changeEl = card.querySelector(".asset-change");
+
+    card.querySelector(".asset-price").textContent = formatPrice(price);
+    changeEl.textContent = formatPercent(percent);
+}
+
+function resetValues(ticker) {
+    const quote = lastQuotes[ticker];
+    const card = document.getElementById(`card-${ticker}`);
+    if (!quote || !card) return;
+
+    const changeEl = card.querySelector(".asset-change");
+    changeEl.classList.remove("hover-positive", "hover-negative");
+    card.classList.remove("hovering");
+
+    showValues(card, quote.price, quote.changePercent);
+}
+
 function renderCard(ticker, quote) {
     const card = document.getElementById(`card-${ticker}`);
     if (!card) return;
@@ -137,16 +181,16 @@ function renderCard(ticker, quote) {
     currentPercentages[ticker] = quote.changePercent;
     lastQuotes[ticker] = quote;
 
-    card.querySelector(".asset-name").textContent  = quote.name;
-    card.querySelector(".asset-price").textContent = `${quote.price.toFixed(2)} €`;
-
-    const sign = isPositive ? "+" : "";
-    card.querySelector(".asset-change").textContent = `${sign}${quote.changePercent.toFixed(2)}%`;
+    card.querySelector(".asset-name").textContent = quote.name;
 
     card.classList.toggle("green-trend", isPositive);
     card.classList.toggle("red-trend", !isPositive);
 
-    drawSparkline(ticker, quote.chartData, isPositive);
+    if (!card.classList.contains("hovering")) {
+        showValues(card, quote.price, quote.changePercent);
+    }
+
+    drawSparkline(ticker);
 }
 
 function renderError(ticker) {
@@ -161,22 +205,21 @@ function renderError(ticker) {
 }
 
 function redrawAllSparklines() {
-    Object.entries(lastQuotes).forEach(([ticker, quote]) => {
-        drawSparkline(ticker, quote.chartData, quote.changePercent >= 0);
-    });
+    Object.keys(lastQuotes).forEach(ticker => drawSparkline(ticker));
 }
 
-function calculatePoints(sparklineData, width, height) {
-    const min   = Math.min(...sparklineData);
-    const max   = Math.max(...sparklineData);
+function calculatePoints(series, width, height) {
+    const closes = series.map(point => point.close);
+    const min   = Math.min(...closes);
+    const max   = Math.max(...closes);
     const range = (max - min) || 1;
 
     const padding      = height * 0.1;
     const usableHeight = height - padding * 2;
 
-    return sparklineData.map((value, i) => ({
-        x: (i / (sparklineData.length - 1)) * width,
-        y: height - padding - ((value - min) / range) * usableHeight
+    return series.map((point, i) => ({
+        x: (i / (series.length - 1)) * width,
+        y: height - padding - ((point.close - min) / range) * usableHeight
     }));
 }
 
@@ -212,9 +255,27 @@ function strokeLine(ctx, points, color) {
     ctx.shadowBlur  = 0;
 }
 
-function drawSparkline(ticker, sparklineData, isPositive) {
+function drawCrosshair(ctx, point, height, color) {
+    ctx.beginPath();
+    ctx.moveTo(point.x, 0);
+    ctx.lineTo(point.x, height);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = "#0b0e14";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+}
+
+function drawSparkline(ticker, highlightIndex = null) {
+    const quote = lastQuotes[ticker];
     const canvas = document.getElementById(`chart-${ticker}`);
-    if (!canvas) return;
+    if (!quote || !canvas) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -228,13 +289,76 @@ function drawSparkline(ticker, sparklineData, isPositive) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, rect.width, rect.height);
 
-    if (sparklineData.length < 2) return;
+    if (quote.series.length < 2) return;
 
-    const points = calculatePoints(sparklineData, rect.width, rect.height);
-    const colors = isPositive ? TREND_COLORS.positive : TREND_COLORS.negative;
+    const points = calculatePoints(quote.series, rect.width, rect.height);
+    const colors = quote.changePercent >= 0 ? TREND_COLORS.positive : TREND_COLORS.negative;
 
     fillUnderLine(ctx, points, rect.height, colors.rgb);
     strokeLine(ctx, points, colors.line);
+
+    if (highlightIndex !== null && points[highlightIndex]) {
+        drawCrosshair(ctx, points[highlightIndex], rect.height, colors.line);
+    }
+
+    return points;
+}
+
+function showTooltip(ticker, index) {
+    const quote = lastQuotes[ticker];
+    const card = document.getElementById(`card-${ticker}`);
+    if (!quote || !card) return;
+
+    const point = quote.series[index];
+    if (!point) return;
+
+    const points = drawSparkline(ticker, index);
+    if (!points) return;
+
+    const tooltip = card.querySelector(".chart-tooltip");
+    const percent = quote.baseline
+        ? ((point.close - quote.baseline) / quote.baseline) * 100
+        : 0;
+
+    tooltip.textContent = formatTime(point.time, quote.range);
+
+    card.classList.add("hovering");
+    showValues(card, point.close, percent);
+
+    const changeEl = card.querySelector(".asset-change");
+    changeEl.classList.toggle("hover-positive", percent >= 0);
+    changeEl.classList.toggle("hover-negative", percent < 0);
+
+    const container = card.querySelector(".chart-container");
+    const ratio = points[index].x / container.clientWidth;
+    tooltip.style.left = `${ratio * 100}%`;
+    tooltip.hidden = false;
+}
+
+function hideTooltip(ticker) {
+    const card = document.getElementById(`card-${ticker}`);
+    if (!card) return;
+
+    card.querySelector(".chart-tooltip").hidden = true;
+    resetValues(ticker);
+    drawSparkline(ticker);
+}
+
+function initChartInteraction(ticker, canvas) {
+    canvas.addEventListener("pointermove", event => {
+        const quote = lastQuotes[ticker];
+        if (!quote || quote.series.length < 2) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const ratio = (event.clientX - rect.left) / rect.width;
+        const index = Math.round(ratio * (quote.series.length - 1));
+        const safeIndex = Math.min(quote.series.length - 1, Math.max(0, index));
+
+        showTooltip(ticker, safeIndex);
+    });
+
+    canvas.addEventListener("pointerleave", () => hideTooltip(ticker));
+    canvas.addEventListener("pointercancel", () => hideTooltip(ticker));
 }
 
 function setAura(state) {
@@ -285,6 +409,7 @@ function createCard(ticker, initialTf = DEFAULT_TIMEFRAME) {
         <div class="asset-change">--%</div>
         <div class="chart-container">
             <canvas id="chart-${ticker}"></canvas>
+            <div class="chart-tooltip" hidden></div>
         </div>
     `;
 
@@ -299,6 +424,7 @@ function createCard(ticker, initialTf = DEFAULT_TIMEFRAME) {
     });
 
     grid.appendChild(card);
+    initChartInteraction(ticker, card.querySelector("canvas"));
     activeTimeframes[ticker] = timeframe;
 }
 
