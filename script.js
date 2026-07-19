@@ -23,6 +23,8 @@ const trackedTickers     = new Set();
 const activeTimeframes   = {};
 const currentPercentages = {};
 const lastQuotes         = {};
+const previousPrices     = {};
+const priceAnimations    = {};
 const requestCounters    = {};
 
 const nameToTickerMap = {
@@ -154,6 +156,52 @@ function updateAllTracks() {
     trackedTickers.forEach(updateAsset);
 }
 
+const PRICE_ANIMATION_MS = 400;
+
+function animatePrice(ticker, from, to) {
+    const card = document.getElementById(`card-${ticker}`);
+    if (!card) return;
+
+    const priceEl = card.querySelector(".asset-price");
+
+    if (priceAnimations[ticker]) {
+        cancelAnimationFrame(priceAnimations[ticker]);
+    }
+
+    const start = performance.now();
+
+    function step(now) {
+        if (card.classList.contains("hovering")) {
+            delete priceAnimations[ticker];
+            return;
+        }
+
+        const progress = Math.min((now - start) / PRICE_ANIMATION_MS, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const value = from + (to - from) * eased;
+
+        priceEl.textContent = formatPrice(value);
+
+        if (progress < 1) {
+            priceAnimations[ticker] = requestAnimationFrame(step);
+        } else {
+            delete priceAnimations[ticker];
+        }
+    }
+
+    priceAnimations[ticker] = requestAnimationFrame(step);
+}
+
+function flashCard(ticker, direction) {
+    const card = document.getElementById(`card-${ticker}`);
+    if (!card) return;
+
+    const flashClass = direction > 0 ? "flash-up" : "flash-down";
+    card.classList.remove("flash-up", "flash-down");
+    void card.offsetWidth;
+    card.classList.add(flashClass);
+}
+
 function showValues(card, price, percent) {
     const changeEl = card.querySelector(".asset-change");
 
@@ -186,10 +234,20 @@ function renderCard(ticker, quote) {
     card.classList.toggle("green-trend", isPositive);
     card.classList.toggle("red-trend", !isPositive);
 
+    const previous = previousPrices[ticker];
+    const priceChanged = typeof previous === "number" && previous !== quote.price;
+
     if (!card.classList.contains("hovering")) {
-        showValues(card, quote.price, quote.changePercent);
+        if (priceChanged) {
+            card.querySelector(".asset-change").textContent = formatPercent(quote.changePercent);
+            animatePrice(ticker, previous, quote.price);
+            flashCard(ticker, quote.price - previous);
+        } else {
+            showValues(card, quote.price, quote.changePercent);
+        }
     }
 
+    previousPrices[ticker] = quote.price;
     drawSparkline(ticker);
 }
 
@@ -435,7 +493,13 @@ function removeCard(ticker) {
     delete activeTimeframes[ticker];
     delete currentPercentages[ticker];
     delete lastQuotes[ticker];
+    delete previousPrices[ticker];
     delete requestCounters[ticker];
+
+    if (priceAnimations[ticker]) {
+        cancelAnimationFrame(priceAnimations[ticker]);
+        delete priceAnimations[ticker];
+    }
 
     saveToLocalStorage();
     updateGlobalAura();
