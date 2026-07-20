@@ -251,6 +251,27 @@ header h1 {
     font-weight: 700;
     letter-spacing: -0.5px;
     margin-bottom: 2px;
+    font-variant-numeric: tabular-nums;
+}
+
+@keyframes flashUp {
+    0%   { background: rgba(34, 197, 94, 0); }
+    30%  { background: rgba(34, 197, 94, 0.12); }
+    100% { background: rgba(34, 197, 94, 0); }
+}
+
+@keyframes flashDown {
+    0%   { background: rgba(239, 68, 68, 0); }
+    30%  { background: rgba(239, 68, 68, 0.12); }
+    100% { background: rgba(239, 68, 68, 0); }
+}
+
+.asset-card.flash-up {
+    animation: flashUp 0.8s ease-out;
+}
+
+.asset-card.flash-down {
+    animation: flashDown 0.8s ease-out;
 }
 
 .asset-change {
@@ -375,5 +396,9 @@ body.aura-neutral #pulse-dot {
     }
     .asset-card:hover {
         transform: none;
+    }
+    .asset-card.flash-up,
+    .asset-card.flash-down {
+        animation: none;
     }
 }

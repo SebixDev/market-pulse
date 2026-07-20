@@ -1,6 +1,6 @@
 # Market-Pulse 📈
 
-**Stand: 19. Juli 2026**
+**Stand: 17. Juli 2026**
 
 Ein elegantes, performantes Echtzeit-Dashboard für weltweite Aktien, Indizes und ETFs. Die Anwendung startet mit einer minimalistischen, leeren Oberfläche und passt sich dynamisch an das Nutzerverhalten an. Mehrere eingegebene Werte ordnen sich vollautomatisch in einem modernen, platzsparenden Kachel-Grid an.
 
@@ -9,6 +9,7 @@ Ein elegantes, performantes Echtzeit-Dashboard für weltweite Aktien, Indizes un
 - **Dynamische Markt-Aura:** Das Dashboard analysiert die Gesamtentwicklung aller geladenen Assets im gewählten Intervall. Steht deine Watchlist unterm Strich im Plus, hüllt sich der Hintergrund in ein dezent pulsierendes Smaragdgrün und der Live-Punkt leuchtet auf. Überwiegen die Verluste, wechselt die Aura in ein edles Karmesinrot. Bei leerem Dashboard bleibt das Licht neutral.
 - **Sparkline-Charts mit Verlaufsfüllung:** Jede Karte zeigt den Kursverlauf als eigene Linie auf einem HTML5-Canvas – inklusive eines weich auslaufenden Farbverlaufs unter der Kurve, der die Trendfarbe aufgreift. Gezeichnet wird in der Auflösung des Displays, dadurch bleiben die Linien auch auf hochauflösenden Bildschirmen gestochen scharf.
 - **Interaktiver Kursverlauf:** Beim Fahren über den Chart erscheint eine Fadenkreuz-Linie mit Markierungspunkt auf der Kurve. Preis und Prozentanzeige der Karte springen dabei auf den Wert des jeweiligen Zeitpunkts, während ein kleiner Tooltip den passenden Zeitstempel einblendet – in der Tagesansicht minutengenau, bei längeren Zeiträumen als Datum. Verlässt der Zeiger den Chart, steht wieder der aktuelle Kurs da.
+- **Animierte Kurs-Updates:** Ändert sich der Preis bei einem der automatischen Abrufe, zählt die Anzeige weich zum neuen Wert hoch, statt hart umzuspringen. Gleichzeitig leuchtet die Karte kurz grün oder rot auf – so wird jedes Live-Update sichtbar.
 - **Persistente Watchlist (LocalStorage):** Alle gesuchten Aktien und Indizes werden automatisch lokal im Browser gesichert. Beim Schließen oder Neuladen des Tabs bleibt die Übersicht vollständig erhalten – inklusive des jeweils ausgewählten Zeitraums pro Karte.
 - **Clean-Start-Prinzip:** Keine voreingestellten Dummy-Charts. Das Dashboard bleibt beim allerersten Besuch vollkommen leer, bis eine gezielte Suche gestartet wird.
 - **Dynamische Löschfunktion:** Jede Karte besitzt oben rechts ein dezentes Schließen-Symbol (`✕`), über das Assets sofort aus der Ansicht entfernt, aus dem LocalStorage gelöscht und vom automatischen Live-Update getrennt werden.
@@ -30,15 +31,7 @@ Suche direkt nach Tickern (z. B. `AAPL`, `MSFT`, `TSLA`) oder nach den Namen gro
 - **Aktien:** Microsoft, Apple, Nvidia, Amazon, Google, Tesla, Mercedes, BMW, SAP, Allianz u. v. m.
 - **ETFs & Krypto:** S&P 500, MSCI World, Nasdaq 100, DAX ETF, Bitcoin ETF, Gold ETF
 
-## 🚀 Starten
 
-Kein Build nötig. Da die App per `fetch` arbeitet, muss sie über einen Webserver laufen – ein Doppelklick auf die `index.html` reicht nicht.
-
-```bash
-python3 -m http.server 8000
-```
-
-Anschließend `http://localhost:8000` im Browser öffnen.
 
 ---
 
