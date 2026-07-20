@@ -1,6 +1,6 @@
 # Market-Pulse 📈
 
-**Stand: 17. Juli 2026**
+**Stand: 21. Juli 2026**
 
 Ein elegantes, performantes Echtzeit-Dashboard für weltweite Aktien, Indizes und ETFs. Die Anwendung startet mit einer minimalistischen, leeren Oberfläche und passt sich dynamisch an das Nutzerverhalten an. Mehrere eingegebene Werte ordnen sich vollautomatisch in einem modernen, platzsparenden Kachel-Grid an.
 
@@ -30,6 +30,8 @@ Suche direkt nach Tickern (z. B. `AAPL`, `MSFT`, `TSLA`) oder nach den Namen gro
 
 - **Aktien:** Microsoft, Apple, Nvidia, Amazon, Google, Tesla, Mercedes, BMW, SAP, Allianz u. v. m.
 - **ETFs & Krypto:** S&P 500, MSCI World, Nasdaq 100, DAX ETF, Bitcoin ETF, Gold ETF
+
+## 🚀 Starten
 
 
 
